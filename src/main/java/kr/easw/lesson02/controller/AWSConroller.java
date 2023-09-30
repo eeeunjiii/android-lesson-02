@@ -3,10 +3,16 @@ package kr.easw.lesson02.controller;
 import kr.easw.lesson02.model.dto.AWSKeyDto;
 import kr.easw.lesson02.service.AWSService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.ModelAndView;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 
 @RestController
@@ -42,14 +48,27 @@ public class AWSConroller {
         }
     }
 
-
-    @PostMapping("/download")
-    private ModelAndView onDownload(@RequestParam String fileName) {
+    @GetMapping("/download")
+    public ResponseEntity<?> onDownload(@RequestParam("filename") String fileName) {
         try {
-           // 이곳에 파일 다운로드 로직, 혹은 서비스를 통한 다운로드 호출을 구현하십시오.
-           throw new IllegalStateException("기능이 구현되지 않았습니다.");
-        } catch (Throwable e) {
-            return new ModelAndView("redirect:/server-error?errorStatus=" + e.getMessage());
+            File file = awsController.downloadFile(fileName);
+
+            if (file == null || !file.exists()) {
+                throw new IllegalArgumentException("다운로드할 파일이 존재하지 않습니다.");
+            }
+
+            byte[] fileBytes = Files.readAllBytes(file.toPath());
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", fileName);
+
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(fileBytes);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("오류");
         }
     }
 
